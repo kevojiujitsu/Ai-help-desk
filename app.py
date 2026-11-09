@@ -1,4 +1,5 @@
 from flask import Flask, request, render_template_string
+import requests
 
 app = Flask(__name__)
 
@@ -67,11 +68,41 @@ def home():
         message = request.form.get("message", "").strip()
 
         if message:
-            reply = (
-                "Thanks for describing the problem. "
-                "What operating system are you using, "
-                "and do you see an error message?"
-            )
+            try:
+                response = requests.post(
+                    "http://127.0.0.1:11434/api/chat",
+                    json={
+                        "model": "qwen3:8b",
+                        "messages": [
+                            {
+                                "role": "system",
+                                "content": (
+                                    "You are a helpful IT troubleshooting assistant. "
+                                    "Give concise, accurate guidance. "
+                                    "Ask questions when details are missing. "
+                                    "Start with simple, reversible checks. "
+                                    "Explain risks before suggesting changes. "
+                                    "Never ask for passwords."
+                                ),
+                            },
+                            {"role": "user", "content": message},
+                        ],
+                        "stream": False,
+                        "think": False,
+                    },
+                    timeout=(10, 180),
+                )
+                response.raise_for_status()
+                reply = response.json()["message"]["content"]
+            except requests.exceptions.Timeout:
+                reply = "The local AI took too long. Please try again."
+            except requests.exceptions.RequestException:
+                reply = (
+                    "Could not get a response from Ollama. "
+                    "Make sure Ollama is running and try again."
+                )
+            except (KeyError, ValueError):
+                reply = "The AI returned an unexpected response. Please try again."
         else:
             reply = "Please describe your computer problem."
 
