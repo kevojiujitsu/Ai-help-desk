@@ -1,0 +1,5 @@
+.venv/
+.venv-helpdesk/
+__pycache__/
+*.pyc
+.env
